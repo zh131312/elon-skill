@@ -6,9 +6,8 @@ set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# All skills in the suite
-SKILLS=("elon" "elon-think" "elon-plan" "elon-build" "elon-review" "elon-test" "elon-ship" "elon-retro" "elon-hire" "elon-focus")
-SKILL_DIRS=("." "think" "plan" "build" "review" "test" "ship" "retro" "hire" "focus")
+# Sub-skills (name -> subdirectory). The main /elon skill lives at the repo root.
+SUB_SKILLS=("elon-think:think" "elon-plan:plan" "elon-build:build" "elon-review:review" "elon-test:test" "elon-ship:ship" "elon-retro:retro" "elon-hire:hire" "elon-focus:focus")
 
 # Colors
 RED='\033[0;31m'
@@ -52,30 +51,59 @@ fi
 
 mkdir -p "${CLAUDE_SKILLS_DIR}"
 
-# Install each skill
 INSTALLED=0
-for i in "${!SKILLS[@]}"; do
-  SKILL_NAME="${SKILLS[$i]}"
-  SOURCE_DIR="${SKILL_DIR}/${SKILL_DIRS[$i]}"
+
+# --- Install main /elon skill ---
+# If the repo is already at the skills dir (cloned directly to ~/.claude/skills/elon), no symlink needed.
+# If cloned elsewhere, symlink it.
+ELON_TARGET="${CLAUDE_SKILLS_DIR}/elon"
+REAL_SKILL_DIR="$(cd "$SKILL_DIR" && pwd -P)"
+REAL_TARGET=""
+if [ -d "$ELON_TARGET" ] && [ ! -L "$ELON_TARGET" ]; then
+  REAL_TARGET="$(cd "$ELON_TARGET" && pwd -P)"
+fi
+
+if [ "$REAL_SKILL_DIR" = "$REAL_TARGET" ]; then
+  info "Installed /elon (already in place)"
+  INSTALLED=$((INSTALLED + 1))
+elif [ -L "$ELON_TARGET" ]; then
+  rm "$ELON_TARGET"
+  ln -s "$SKILL_DIR" "$ELON_TARGET"
+  info "Installed /elon (updated symlink)"
+  INSTALLED=$((INSTALLED + 1))
+elif [ -d "$ELON_TARGET" ]; then
+  warn "Existing /elon found — backing up to elon.bak"
+  mv "$ELON_TARGET" "${ELON_TARGET}.bak"
+  ln -s "$SKILL_DIR" "$ELON_TARGET"
+  info "Installed /elon"
+  INSTALLED=$((INSTALLED + 1))
+else
+  ln -s "$SKILL_DIR" "$ELON_TARGET"
+  info "Installed /elon"
+  INSTALLED=$((INSTALLED + 1))
+fi
+
+# --- Install sub-skills ---
+for entry in "${SUB_SKILLS[@]}"; do
+  SKILL_NAME="${entry%%:*}"
+  SUB_DIR="${entry##*:}"
+  SOURCE_DIR="${SKILL_DIR}/${SUB_DIR}"
   TARGET="${CLAUDE_SKILLS_DIR}/${SKILL_NAME}"
 
-  # Verify SKILL.md exists
   if [ ! -f "${SOURCE_DIR}/SKILL.md" ]; then
     warn "Skipping ${SKILL_NAME} — SKILL.md not found"
     continue
   fi
 
-  # Symlink
+  # Remove old symlink or back up existing directory
   if [ -L "$TARGET" ]; then
     rm "$TARGET"
   elif [ -d "$TARGET" ]; then
-    if [ "$(cd "$TARGET" && pwd)" != "$SOURCE_DIR" ]; then
-      mv "$TARGET" "${TARGET}.bak"
-      warn "Backed up existing ${SKILL_NAME}"
-    fi
+    mv "$TARGET" "${TARGET}.bak"
+    warn "Backed up existing ${SKILL_NAME}"
   fi
 
-  ln -sf "$SOURCE_DIR" "$TARGET"
+  ln -s "$SOURCE_DIR" "$TARGET"
   info "Installed /${SKILL_NAME}"
   INSTALLED=$((INSTALLED + 1))
 done
