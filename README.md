@@ -1,8 +1,8 @@
 # ⚡ /elon
 
-**First-principles AI mentor for Claude Code.** Type `/elon` and get challenged by a mentor who thinks like Elon Musk — from physics up, with zero tolerance for bullshit.
+**Elon Musk as your AI engineering mentor.** 10 skills that apply his frameworks from *The Book of Elon* (Eric Jorgenson) to every phase of building a project.
 
-Built from *The Book of Elon* by Eric Jorgenson.
+Like [gstack](https://github.com/garrytan/gstack), but instead of Garry Tan's startup playbook — you get Elon's first-principles engineering philosophy. The Algorithm. The Idiot Index. The Magic-Wand Number. Applied directly to your code and decisions.
 
 ---
 
@@ -13,67 +13,85 @@ git clone https://github.com/zh131312/elon-skill.git ~/.claude/skills/elon
 cd ~/.claude/skills/elon && ./setup
 ```
 
-That's it. Open Claude Code and type `/elon`.
-
-### Project-scoped install
-
-```bash
-git clone https://github.com/zh131312/elon-skill.git
-cd elon-skill && ./setup --local
-```
-
-This installs to `.claude/skills/elon/` in your current project instead of globally.
+10 skills installed. No dependencies. No build step.
 
 ---
 
-## What it does
+## The Skills
 
-`/elon` transforms Claude into a direct, first-principles mentor that:
-
-- **Runs The Algorithm** on every problem you bring — Question → Delete → Simplify → Accelerate → Automate
-- **Challenges your assumptions** before letting you build anything
-- **Pushes for action** — no analysis paralysis, no safe answers
-- **Applies to code** — deletes before adding, attacks bottlenecks, parallelizes work
-
-### Example
-
-```
-You:   /elon
-Elon:  What are you building and why does it matter?
-
-You:   I'm adding a caching layer to speed up our API
-Elon:  Stop. Why is the API slow? Have you profiled it?
-       You might be optimizing something that shouldn't exist.
-       Show me the actual bottleneck.
-```
+| Command | Phase | What Elon Does |
+|---------|-------|----------------|
+| `/elon` | **General** | Open mentorship. Challenges your thinking, pushes for action |
+| `/elon-think` | **Think** | Forces first-principles reasoning. Kills analogies. Calculates magic-wand numbers and idiot indexes |
+| `/elon-plan` | **Plan** | Runs The Algorithm (Question → Delete → Simplify → Accelerate → Automate). Sets aggressive timelines |
+| `/elon-build` | **Build** | Writes code with you. Deletes before adding. Simplifies ruthlessly. Thinks about the factory |
+| `/elon-review` | **Review** | Brutal honest review. Checks idiot index on your code. Finds wrong optimizations |
+| `/elon-test` | **Test** | SpaceX testing philosophy. Matches intensity to stakes (Dragon/Falcon/Starship modes) |
+| `/elon-ship` | **Ship** | Creates maniacal urgency. Cuts scope. Parallelizes. Gets it out the door |
+| `/elon-retro` | **Retro** | Extracts learning. Updates mental models. "Aspire to be less wrong" |
+| `/elon-hire` | **Team** | Build small, exceptional teams. Fix communication. Kill org bloat |
+| `/elon-focus` | **Focus** | Find the bottleneck. Kill distractions. One metric that matters |
 
 ---
 
-## What's inside
+## The Workflow
+
+Use them in sequence through a project, or jump to whichever phase you need:
+
+```
+/elon-think  →  /elon-plan  →  /elon-build  →  /elon-review  →  /elon-test  →  /elon-ship
+                                                                                      ↓
+                                                                                /elon-retro
+```
+
+Or use `/elon` anytime for general mentorship — it covers everything.
+
+---
+
+## Key Frameworks (from the book)
+
+### The Algorithm
+Applied in `/elon-plan`. The sacred order:
+1. **Question requirements** — "Your requirements are definitely dumb"
+2. **Delete** — "If you're not adding things back 10% of the time, you're not deleting enough"
+3. **Simplify** — "The third step. Not the first step"
+4. **Accelerate** — "Don't dig your grave faster. Stop digging"
+5. **Automate** — Last, never first
+
+### The Idiot Index
+Applied in `/elon-think` and `/elon-review`. How much more does the finished product cost than its raw materials? $13,000 part from $200 of steel = idiotic design.
+
+### The Magic-Wand Number
+Applied in `/elon-think`. If you could rearrange atoms for free, what would it cost? That's your theoretical floor. At SpaceX: under 5% of selling price.
+
+### Thinking in Limits
+Applied across all skills. Scale to extremes. "If volume was a million units/year, would it still be expensive? If yes, the problem is design, not scale."
+
+### The Iteration Spectrum
+Applied in `/elon-test`. Dragon mode (zero tolerance), Falcon mode (thorough but accept some failure), Starship mode (iterate fast, expect explosions).
+
+---
+
+## What's Inside
 
 ```
 elon/
-├── SKILL.md    ← The skill (what Claude reads)
-├── setup       ← One-command installer
+├── SKILL.md              ← /elon (general mentor)
+├── think/SKILL.md        ← /elon-think
+├── plan/SKILL.md         ← /elon-plan
+├── build/SKILL.md        ← /elon-build
+├── review/SKILL.md       ← /elon-review
+├── test/SKILL.md         ← /elon-test
+├── ship/SKILL.md         ← /elon-ship
+├── retro/SKILL.md        ← /elon-retro
+├── hire/SKILL.md         ← /elon-hire
+├── focus/SKILL.md        ← /elon-focus
+├── setup                 ← One-command installer
 ├── LICENSE
 └── README.md
 ```
 
-No dependencies. No build step. No runtime. Just a single `SKILL.md` that Claude loads when you type `/elon`.
-
----
-
-## The Algorithm
-
-The core framework, applied to every problem in order:
-
-| Step | Action | Principle |
-|------|--------|-----------|
-| 1 | **Question requirements** | Your requirements are definitely dumb |
-| 2 | **Delete** | The best part is no part |
-| 3 | **Simplify** | Don't optimize what shouldn't exist |
-| 4 | **Accelerate** | Only after simplifying |
-| 5 | **Automate** | Last, never first |
+No dependencies. No runtime. No build step. Just markdown that Claude reads.
 
 ---
 
@@ -87,20 +105,22 @@ The core framework, applied to every problem in order:
 
 ---
 
-## Customize
+## Update
 
-Edit `SKILL.md` to:
-- Add your industry context
-- Adjust intensity
-- Add new frameworks
-- Focus on specific domains
+```bash
+cd ~/.claude/skills/elon && git pull
+```
+
+Skills update instantly — they're symlinked.
 
 ---
 
 ## Uninstall
 
 ```bash
-rm -rf ~/.claude/skills/elon
+cd ~/.claude/skills/elon && ./setup --uninstall
+# Or manually:
+rm -rf ~/.claude/skills/elon{,-think,-plan,-build,-review,-test,-ship,-retro,-hire,-focus}
 ```
 
 ---
@@ -111,4 +131,4 @@ MIT
 
 ---
 
-*Based on "The Book of Elon" by Eric Jorgenson. All principles from Elon Musk's own words.*
+*All frameworks and quotes from "The Book of Elon: A Guide to Purpose and Success" by Eric Jorgenson — a curated collection of Elon Musk's own words from interviews, tweets, speeches, and memos.*

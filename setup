@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# /elon — Elon Musk AI Mentor
+# /elon — Elon Musk AI Mentor Suite
 # One-command installer for Claude Code and compatible agents
 
-SKILL_NAME="elon"
 SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# All skills in the suite
+SKILLS=("elon" "elon-think" "elon-plan" "elon-build" "elon-review" "elon-test" "elon-ship" "elon-retro" "elon-hire" "elon-focus")
+SKILL_DIRS=("." "think" "plan" "build" "review" "test" "ship" "retro" "hire" "focus")
 
 # Colors
 RED='\033[0;31m'
@@ -19,7 +22,7 @@ warn()  { echo -e "${YELLOW}▸${NC} $1"; }
 error() { echo -e "${RED}▸${NC} $1" >&2; }
 
 echo ""
-echo -e "${BOLD}⚡ /elon — Installing Elon Musk AI Mentor${NC}"
+echo -e "${BOLD}⚡ /elon — Installing Elon Musk AI Mentor Suite (10 skills)${NC}"
 echo ""
 
 # Detect target
@@ -42,52 +45,52 @@ done
 
 if [ "$LOCAL" = true ]; then
   CLAUDE_SKILLS_DIR=".claude/skills"
-  info "Installing locally to ${CLAUDE_SKILLS_DIR}/${SKILL_NAME}/"
+  info "Installing locally to ${CLAUDE_SKILLS_DIR}/"
 else
-  info "Installing globally to ${CLAUDE_SKILLS_DIR}/${SKILL_NAME}/"
+  info "Installing globally to ${CLAUDE_SKILLS_DIR}/"
 fi
 
-# Verify SKILL.md exists
-if [ ! -f "${SKILL_DIR}/SKILL.md" ]; then
-  error "SKILL.md not found in ${SKILL_DIR}. Something is wrong with the repo."
-  exit 1
-fi
-
-# Create skills directory if needed
 mkdir -p "${CLAUDE_SKILLS_DIR}"
 
-# Install: symlink the skill directory
-TARGET="${CLAUDE_SKILLS_DIR}/${SKILL_NAME}"
+# Install each skill
+INSTALLED=0
+for i in "${!SKILLS[@]}"; do
+  SKILL_NAME="${SKILLS[$i]}"
+  SOURCE_DIR="${SKILL_DIR}/${SKILL_DIRS[$i]}"
+  TARGET="${CLAUDE_SKILLS_DIR}/${SKILL_NAME}"
 
-if [ -L "$TARGET" ]; then
-  # Existing symlink — update it
-  rm "$TARGET"
-  ln -s "$SKILL_DIR" "$TARGET"
-  info "Updated existing symlink"
-elif [ -d "$TARGET" ]; then
-  # Existing directory — check if it's our repo
-  if [ "$(cd "$TARGET" && pwd)" = "$SKILL_DIR" ]; then
-    info "Already installed from this location"
-  else
-    warn "Existing skill found at ${TARGET}"
-    warn "Backing up to ${TARGET}.bak"
-    mv "$TARGET" "${TARGET}.bak"
-    ln -s "$SKILL_DIR" "$TARGET"
-    info "Installed (previous version backed up)"
+  # Verify SKILL.md exists
+  if [ ! -f "${SOURCE_DIR}/SKILL.md" ]; then
+    warn "Skipping ${SKILL_NAME} — SKILL.md not found"
+    continue
   fi
-else
-  ln -s "$SKILL_DIR" "$TARGET"
-  info "Symlinked skill"
-fi
 
-# Verify
-if [ -f "${TARGET}/SKILL.md" ]; then
-  echo ""
-  echo -e "${GREEN}${BOLD}✓ Installed successfully.${NC}"
-  echo ""
-  echo -e "  Type ${BOLD}/elon${NC} in Claude Code to start a mentorship session."
-  echo ""
-else
-  error "Installation failed — SKILL.md not found at target."
-  exit 1
-fi
+  # Symlink
+  if [ -L "$TARGET" ]; then
+    rm "$TARGET"
+  elif [ -d "$TARGET" ]; then
+    if [ "$(cd "$TARGET" && pwd)" != "$SOURCE_DIR" ]; then
+      mv "$TARGET" "${TARGET}.bak"
+      warn "Backed up existing ${SKILL_NAME}"
+    fi
+  fi
+
+  ln -sf "$SOURCE_DIR" "$TARGET"
+  info "Installed /${SKILL_NAME}"
+  INSTALLED=$((INSTALLED + 1))
+done
+
+echo ""
+echo -e "${GREEN}${BOLD}✓ ${INSTALLED} skills installed.${NC}"
+echo ""
+echo -e "  ${BOLD}/elon${NC}          General mentor — start here"
+echo -e "  ${BOLD}/elon-think${NC}    First-principles thinking"
+echo -e "  ${BOLD}/elon-plan${NC}     The Algorithm + project planning"
+echo -e "  ${BOLD}/elon-build${NC}    Write code with extreme simplicity"
+echo -e "  ${BOLD}/elon-review${NC}   Brutal honest code/design review"
+echo -e "  ${BOLD}/elon-test${NC}     SpaceX testing philosophy"
+echo -e "  ${BOLD}/elon-ship${NC}     Maniacal urgency to ship"
+echo -e "  ${BOLD}/elon-retro${NC}    Learn from success and failure"
+echo -e "  ${BOLD}/elon-hire${NC}     Build exceptional teams"
+echo -e "  ${BOLD}/elon-focus${NC}    Find and attack the bottleneck"
+echo ""
