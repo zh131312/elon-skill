@@ -141,8 +141,12 @@ for platform in "${PLATFORMS[@]}"; do
       fi
       ;;
     cursor)
-      # Cursor is always project-scoped, uses .cursor/rules/ with .mdc files
-      SKILLS_DIR=".cursor/rules"
+      # Cursor uses .cursor/rules/ with .mdc files
+      if [ "$LOCAL" = true ]; then
+        SKILLS_DIR=".cursor/rules"
+      else
+        SKILLS_DIR="$HOME/.cursor/rules"
+      fi
       ;;
     openclaw)
       if [ "$LOCAL" = true ]; then
@@ -199,10 +203,10 @@ MDCEOF
 
     # Sub-skills
     for entry in "${SUB_SKILLS[@]}"; do
-      local skill_name="${entry%%:*}"
-      local sub_dir="${entry##*:}"
-      if generate_cursor_rule "$skill_name" "${SKILL_DIR}/${sub_dir}"; then
-        info "Installed ${skill_name}.mdc"
+      c_skill_name="${entry%%:*}"
+      c_sub_dir="${entry##*:}"
+      if generate_cursor_rule "$c_skill_name" "${SKILL_DIR}/${c_sub_dir}"; then
+        info "Installed ${c_skill_name}.mdc"
         INSTALLED=$((INSTALLED + 1))
       fi
     done
