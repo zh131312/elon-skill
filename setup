@@ -2,114 +2,257 @@
 set -euo pipefail
 
 # /elon — Elon Musk AI Mentor Suite
-# One-command installer for Claude Code and compatible agents
+# Multi-platform installer: Claude Code, Codex, Kiro, Cursor, OpenClaw
 
 SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Sub-skills (name -> subdirectory). The main /elon skill lives at the repo root.
+# Sub-skills (name:subdirectory)
 SUB_SKILLS=("elon-think:think" "elon-plan:plan" "elon-build:build" "elon-review:review" "elon-test:test" "elon-ship:ship" "elon-retro:retro" "elon-hire:hire" "elon-focus:focus")
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
 info()  { echo -e "${GREEN}▸${NC} $1"; }
 warn()  { echo -e "${YELLOW}▸${NC} $1"; }
 error() { echo -e "${RED}▸${NC} $1" >&2; }
+header(){ echo -e "${CYAN}▸${NC} $1"; }
 
-echo ""
-echo -e "${BOLD}⚡ /elon — Installing Elon Musk AI Mentor Suite (10 skills)${NC}"
-echo ""
-
-# Detect target
-CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+# --- Parse args ---
+HOST=""
 LOCAL=false
 
 for arg in "$@"; do
   case "$arg" in
+    --host=*) HOST="${arg#*=}" ;;
     --local) LOCAL=true ;;
     --help|-h)
+      echo ""
       echo "Usage: ./setup [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --local    Install to ./.claude/skills/ (project-scoped)"
-      echo "  --help     Show this message"
+      echo "  --host=PLATFORM  Target platform: claude, codex, kiro, cursor, openclaw, all, auto (default: auto)"
+      echo "  --local          Install to project scope instead of global"
+      echo "  --help           Show this message"
+      echo ""
+      echo "Examples:"
+      echo "  ./setup                    Auto-detect installed platforms"
+      echo "  ./setup --host=claude      Install for Claude Code only"
+      echo "  ./setup --host=all         Install for all supported platforms"
+      echo "  ./setup --local            Project-scoped install (current directory)"
       exit 0
       ;;
   esac
 done
 
-if [ "$LOCAL" = true ]; then
-  CLAUDE_SKILLS_DIR=".claude/skills"
-  info "Installing locally to ${CLAUDE_SKILLS_DIR}/"
+echo ""
+echo -e "${BOLD}⚡ /elon — Elon Musk AI Mentor Suite (10 skills)${NC}"
+echo ""
+
+# --- Platform detection ---
+detect_platforms() {
+  local platforms=()
+  command -v claude >/dev/null 2>&1 && platforms+=("claude")
+  command -v codex >/dev/null 2>&1 && platforms+=("codex")
+  command -v kiro >/dev/null 2>&1 && platforms+=("kiro")
+  # Cursor: check for .cursor dir or cursor command
+  if command -v cursor >/dev/null 2>&1 || [ -d "$HOME/.cursor" ]; then
+    platforms+=("cursor")
+  fi
+  command -v openclaw >/dev/null 2>&1 && platforms+=("openclaw")
+  # If nothing detected, default to claude
+  if [ ${#platforms[@]} -eq 0 ]; then
+    platforms+=("claude")
+  fi
+  echo "${platforms[@]}"
+}
+
+if [ -z "$HOST" ] || [ "$HOST" = "auto" ]; then
+  PLATFORMS=($(detect_platforms))
+  info "Auto-detected: ${PLATFORMS[*]}"
+elif [ "$HOST" = "all" ]; then
+  PLATFORMS=("claude" "codex" "kiro" "cursor" "openclaw")
 else
-  info "Installing globally to ${CLAUDE_SKILLS_DIR}/"
+  PLATFORMS=("$HOST")
 fi
 
-mkdir -p "${CLAUDE_SKILLS_DIR}"
+# --- Symlink helper ---
+# Creates a symlink from SOURCE to TARGET, backing up if needed
+symlink_skill() {
+  local source="$1"
+  local target="$2"
+  local name="$3"
 
-INSTALLED=0
-
-# --- Install main /elon skill ---
-# If the repo is already at the skills dir (cloned directly to ~/.claude/skills/elon), no symlink needed.
-# If cloned elsewhere, symlink it.
-ELON_TARGET="${CLAUDE_SKILLS_DIR}/elon"
-REAL_SKILL_DIR="$(cd "$SKILL_DIR" && pwd -P)"
-REAL_TARGET=""
-if [ -d "$ELON_TARGET" ] && [ ! -L "$ELON_TARGET" ]; then
-  REAL_TARGET="$(cd "$ELON_TARGET" && pwd -P)"
-fi
-
-if [ "$REAL_SKILL_DIR" = "$REAL_TARGET" ]; then
-  info "Installed /elon (already in place)"
-  INSTALLED=$((INSTALLED + 1))
-elif [ -L "$ELON_TARGET" ]; then
-  rm "$ELON_TARGET"
-  ln -s "$SKILL_DIR" "$ELON_TARGET"
-  info "Installed /elon (updated symlink)"
-  INSTALLED=$((INSTALLED + 1))
-elif [ -d "$ELON_TARGET" ]; then
-  warn "Existing /elon found — backing up to elon.bak"
-  mv "$ELON_TARGET" "${ELON_TARGET}.bak"
-  ln -s "$SKILL_DIR" "$ELON_TARGET"
-  info "Installed /elon"
-  INSTALLED=$((INSTALLED + 1))
-else
-  ln -s "$SKILL_DIR" "$ELON_TARGET"
-  info "Installed /elon"
-  INSTALLED=$((INSTALLED + 1))
-fi
-
-# --- Install sub-skills ---
-for entry in "${SUB_SKILLS[@]}"; do
-  SKILL_NAME="${entry%%:*}"
-  SUB_DIR="${entry##*:}"
-  SOURCE_DIR="${SKILL_DIR}/${SUB_DIR}"
-  TARGET="${CLAUDE_SKILLS_DIR}/${SKILL_NAME}"
-
-  if [ ! -f "${SOURCE_DIR}/SKILL.md" ]; then
-    warn "Skipping ${SKILL_NAME} — SKILL.md not found"
-    continue
+  if [ ! -f "${source}/SKILL.md" ]; then
+    warn "Skipping ${name} — SKILL.md not found"
+    return 1
   fi
 
-  # Remove old symlink or back up existing directory
-  if [ -L "$TARGET" ]; then
-    rm "$TARGET"
-  elif [ -d "$TARGET" ]; then
-    mv "$TARGET" "${TARGET}.bak"
-    warn "Backed up existing ${SKILL_NAME}"
+  mkdir -p "$(dirname "$target")"
+
+  if [ -L "$target" ]; then
+    rm "$target"
+  elif [ -d "$target" ]; then
+    local real_source real_target
+    real_source="$(cd "$source" && pwd -P)"
+    real_target="$(cd "$target" && pwd -P)"
+    if [ "$real_source" = "$real_target" ]; then
+      return 0  # already in place
+    fi
+    mv "$target" "${target}.bak"
   fi
 
-  ln -s "$SOURCE_DIR" "$TARGET"
-  info "Installed /${SKILL_NAME}"
-  INSTALLED=$((INSTALLED + 1))
+  ln -sf "$source" "$target"
+  return 0
+}
+
+# --- Install for each platform ---
+TOTAL_INSTALLED=0
+
+for platform in "${PLATFORMS[@]}"; do
+  echo ""
+  header "Installing for ${platform}..."
+
+  # Determine skills directory
+  case "$platform" in
+    claude)
+      if [ "$LOCAL" = true ]; then
+        SKILLS_DIR=".claude/skills"
+      else
+        SKILLS_DIR="$HOME/.claude/skills"
+      fi
+      ;;
+    codex)
+      if [ "$LOCAL" = true ]; then
+        SKILLS_DIR=".agents/skills"
+      else
+        SKILLS_DIR="$HOME/.codex/skills"
+      fi
+      ;;
+    kiro)
+      if [ "$LOCAL" = true ]; then
+        SKILLS_DIR=".kiro/skills"
+      else
+        SKILLS_DIR="$HOME/.kiro/skills"
+      fi
+      ;;
+    cursor)
+      # Cursor is always project-scoped, uses .cursor/rules/ with .mdc files
+      SKILLS_DIR=".cursor/rules"
+      ;;
+    openclaw)
+      if [ "$LOCAL" = true ]; then
+        SKILLS_DIR="skills"
+      else
+        SKILLS_DIR="$HOME/.openclaw/skills"
+      fi
+      ;;
+    *)
+      error "Unknown platform: ${platform}"
+      continue
+      ;;
+  esac
+
+  INSTALLED=0
+
+  if [ "$platform" = "cursor" ]; then
+    # --- Cursor: Generate .mdc rule files ---
+    mkdir -p "$SKILLS_DIR"
+
+    # Generate main elon rule
+    generate_cursor_rule() {
+      local skill_name="$1"
+      local source_dir="$2"
+      local target_file="${SKILLS_DIR}/${skill_name}.mdc"
+
+      if [ ! -f "${source_dir}/SKILL.md" ]; then
+        return 1
+      fi
+
+      # Extract description from YAML frontmatter
+      local description
+      description=$(sed -n '/^---$/,/^---$/{ /^description:/{ s/^description: *//; p; } }' "${source_dir}/SKILL.md")
+
+      # Extract content after frontmatter
+      local content
+      content=$(awk '/^---$/{c++; next} c>=2' "${source_dir}/SKILL.md")
+
+      cat > "$target_file" << MDCEOF
+---
+description: ${description}
+alwaysApply: false
+---
+${content}
+MDCEOF
+      return 0
+    }
+
+    # Main skill
+    if generate_cursor_rule "elon" "$SKILL_DIR"; then
+      info "Installed elon.mdc"
+      INSTALLED=$((INSTALLED + 1))
+    fi
+
+    # Sub-skills
+    for entry in "${SUB_SKILLS[@]}"; do
+      local skill_name="${entry%%:*}"
+      local sub_dir="${entry##*:}"
+      if generate_cursor_rule "$skill_name" "${SKILL_DIR}/${sub_dir}"; then
+        info "Installed ${skill_name}.mdc"
+        INSTALLED=$((INSTALLED + 1))
+      fi
+    done
+
+  else
+    # --- Claude Code / Codex / Kiro / OpenClaw: Symlink SKILL.md directories ---
+    mkdir -p "$SKILLS_DIR"
+
+    # Main /elon skill
+    ELON_TARGET="${SKILLS_DIR}/elon"
+    REAL_SKILL_DIR="$(cd "$SKILL_DIR" && pwd -P)"
+    if [ -d "$ELON_TARGET" ] && [ ! -L "$ELON_TARGET" ]; then
+      REAL_TARGET="$(cd "$ELON_TARGET" && pwd -P)"
+      if [ "$REAL_SKILL_DIR" = "$REAL_TARGET" ]; then
+        info "Installed /elon (already in place)"
+        INSTALLED=$((INSTALLED + 1))
+      else
+        symlink_skill "$SKILL_DIR" "$ELON_TARGET" "elon" && {
+          info "Installed /elon"
+          INSTALLED=$((INSTALLED + 1))
+        }
+      fi
+    else
+      symlink_skill "$SKILL_DIR" "$ELON_TARGET" "elon" && {
+        info "Installed /elon"
+        INSTALLED=$((INSTALLED + 1))
+      }
+    fi
+
+    # Sub-skills
+    for entry in "${SUB_SKILLS[@]}"; do
+      skill_name="${entry%%:*}"
+      sub_dir="${entry##*:}"
+      source="${SKILL_DIR}/${sub_dir}"
+      target="${SKILLS_DIR}/${skill_name}"
+
+      if symlink_skill "$source" "$target" "$skill_name"; then
+        info "Installed /${skill_name}"
+        INSTALLED=$((INSTALLED + 1))
+      fi
+    done
+  fi
+
+  info "${platform}: ${INSTALLED} skills installed"
+  TOTAL_INSTALLED=$((TOTAL_INSTALLED + INSTALLED))
 done
 
+# --- Summary ---
 echo ""
-echo -e "${GREEN}${BOLD}✓ ${INSTALLED} skills installed.${NC}"
+echo -e "${GREEN}${BOLD}✓ ${TOTAL_INSTALLED} total skill installs across ${#PLATFORMS[@]} platform(s).${NC}"
 echo ""
 echo -e "  ${BOLD}/elon${NC}          General mentor — start here"
 echo -e "  ${BOLD}/elon-think${NC}    First-principles thinking"

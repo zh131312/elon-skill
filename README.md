@@ -13,7 +13,7 @@ git clone https://github.com/zh131312/elon-skill.git ~/.claude/skills/elon
 cd ~/.claude/skills/elon && ./setup
 ```
 
-10 skills installed. No dependencies. No build step.
+Auto-detects your installed platforms (Claude Code, Codex, Kiro, Cursor, OpenClaw) and installs for all of them. No dependencies. No build step.
 
 ---
 
@@ -95,13 +95,34 @@ No dependencies. No runtime. No build step. Just markdown that Claude reads.
 
 ---
 
-## Compatibility
+## Platform Support
 
-| Platform | Status |
-|----------|--------|
-| Claude Code | ✅ Full support |
-| OpenClaw | ✅ Compatible |
-| Any tool reading `~/.claude/skills/` | ✅ Works |
+| Platform | Global Path | Local Path | Format | Status |
+|----------|-------------|------------|--------|--------|
+| **Claude Code** | `~/.claude/skills/` | `.claude/skills/` | SKILL.md (symlinked) | ✅ |
+| **Codex (OpenAI)** | `~/.codex/skills/` | `.agents/skills/` | SKILL.md (symlinked) | ✅ |
+| **Kiro (AWS)** | `~/.kiro/skills/` | `.kiro/skills/` | SKILL.md (symlinked) | ✅ |
+| **Cursor** | — (project only) | `.cursor/rules/` | `.mdc` (generated) | ✅ |
+| **OpenClaw** | `~/.openclaw/skills/` | `skills/` | SKILL.md (symlinked) | ✅ |
+
+### Install for a specific platform
+
+```bash
+./setup --host=claude      # Claude Code only
+./setup --host=codex       # Codex only
+./setup --host=kiro        # Kiro only
+./setup --host=cursor      # Cursor (generates .mdc rule files)
+./setup --host=openclaw    # OpenClaw only
+./setup --host=all         # All platforms at once
+./setup                    # Auto-detect installed platforms
+```
+
+### Project-scoped install
+
+```bash
+./setup --local                   # Auto-detect, install to current project
+./setup --host=codex --local      # Codex project-scoped
+```
 
 ---
 
