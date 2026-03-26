@@ -9,7 +9,7 @@ Like [gstack](https://github.com/garrytan/gstack), but instead of Garry Tan's st
 ## Install
 
 ```bash
-git clone https://github.com/zh131312/elon-skill.git ~/.claude/skills/elon
+git clone https://github.com/justinz183/elon-skill.git ~/.claude/skills/elon
 cd ~/.claude/skills/elon && ./setup
 ```
 
